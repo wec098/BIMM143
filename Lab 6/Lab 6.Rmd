@@ -2,7 +2,7 @@
 title: "Lab 6 R functions"
 author: "Weixi Chen"
 date: "10/17/2019"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
