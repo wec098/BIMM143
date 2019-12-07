@@ -1,0 +1,118 @@
+---
+title: "Lab 18"
+author: "Weixi Chen"
+date: "11/26/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Section 1
+```{r}
+# load libraries
+library(GenomicDataCommons)
+library(TCGAbiolinks)
+library(maftools)
+# check GDC status
+status()
+```
+
+```{r}
+projects <- getGDCprojects()
+head(projects)
+View(projects)
+```
+
+```{r}
+cases_by_project <- cases() %>%
+# group all cases by the project id and then count them up
+ facet("project.project_id") %>%
+ aggregations()
+head(cases_by_project)
+View(cases_by_project)
+```
+
+```{r}
+# make barplot of the cases per project id
+x <- cases_by_project$project.project_id
+
+# Make a custom color vector for our plot
+colvec <- rep("lightblue", nrow(x))
+colvec[x$key=="TCGA-PAAD"] <- "red"
+
+# Plot with 'log' for y axis and rotate labels with 'las'
+#par(___)  
+barplot(x$doc_count, names.arg=x$key, log="y", col=colvec, las=2)
+```
+
+```{r}
+# determine for a given project how many cases and what type of data available
+samp <- getSampleFilesSummary("TCGA-PAAD")
+head(samp)
+```
+
+```{r}
+# focus on a particular data type, here "find all gene expression data files for all pancreatic cancer patients"
+query <- GDCquery(project = "TCGA-PAAD",
+                  data.category="Transcriptome Profiling",
+                  data.type="Gene Expression Quantification")
+ans <- getResults(query)
+head(ans)
+# View(ans)
+nrow(ans)
+```
+
+## Section 2
+Identify sequence regions that contain all 9-mer peptides that are only found in the tumor
+```{r}
+# read sequence
+library(bio3d)
+seqs <- read.fasta("lecture18_sequences.fa")
+seqs
+#seqs <- seqaln(seqs) to align to make sure we have residue position correspondences correctly mapped between wt and mutant (incase of indels)
+```
+
+```{r}
+# Calculate positional identity scores
+ide <- conserv(seqs$ali, method="identity")
+mutant.sites <- which(ide<1)
+
+# Exclude gap positions from analysis
+gaps <- gap.inspect(seqs)
+mutant.sites <- mutant.sites[mutant.sites %in% gaps$f.inds]
+mutant.sites
+```
+
+```{r}
+# make names label
+mutant.names <- paste0(seqs$ali["P53_wt",mutant.sites],
+                       mutant.sites,
+                       seqs$ali["P53_mutant",mutant.sites])
+
+mutant.names
+```
+
+```{r}
+## Sequence positions surounding each mutant site
+start.position <- mutant.sites - 8
+end.position <-  mutant.sites + 8
+
+# Blank matrix to store sub-sequences
+store.seqs <- matrix("-", nrow=length(mutant.sites), ncol=17)
+rownames(store.seqs) <- mutant.names
+
+## Extract each sub-sequence
+for(i in 1:length(mutant.sites)) {
+  store.seqs[i,] <- seqs$ali["P53_mutant",start.position[i]:end.position[i]]
+}
+
+store.seqs
+```
+
+```{r}
+## Output a FASTA file for further analysis
+write.fasta(seqs=store.seqs, ids=mutant.names, file="subsequences.fa")
+```
+
