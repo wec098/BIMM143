@@ -1,0 +1,131 @@
+---
+title: "Lab 9"
+author: "Weixi Chen"
+date: "10/29/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## prepare and explore data
+```{r}
+# input data
+wisc.df<-read.csv("WisconsinCancer.csv")
+View(wisc.df)
+head(wisc.df)
+# data features
+nrow(wisc.df)
+table(wisc.df$diagnosis)
+length(grep("_mean",colnames(wisc.df))) #suffixed with _mean, add argument value=TRUE in grep() returens variables' name
+# convert to column 3-32 into matrix
+wisc.data<-as.matrix(wisc.df[,3:32])
+# set row names
+row.names(wisc.data)<-wisc.df$id
+View(wisc.data)
+# create diagnosis vector for later
+diagnosis<-wisc.df$diagnosis
+```
+
+## PCA analysis
+```{r}
+# check mean and STDEV to see if scale is needed
+round(colMeans(wisc.data),3)
+round(apply(wisc.data, 2, sd),3)
+# values look different so use "scale=TRUE"
+```
+
+```{r}
+# perform PCA
+wisc.pr<-prcomp(wisc.data, scale=TRUE)
+wisc.pr.summary<-summary(wisc.pr)
+```
+
+```{r}
+# look at PC1
+wisc.pr.summary$importance[,1]
+# how many PCs required to describe at least 70% variance
+which(wisc.pr.summary$importance[3,]> 0.7)[1]
+# rotation
+wisc.pr$rotation[,1]
+```
+
+```{r}
+# plot all PCs' variance
+plot(wisc.pr)
+# plot PC1 versus PC2 colored by cancer/non-cancer
+plot(wisc.pr$x[,1], wisc.pr$x[,2], col=diagnosis,
+     xlab="PC1", ylab="PC2")
+# alternative visualization
+biplot(wisc.pr)
+```
+
+```{r}
+# variance explained
+pr.var<-wisc.pr$sdev^2
+pr.var
+pr.var.per<-round(pr.var/sum(pr.var),2)
+pr.var.per
+# plot variance explained for each PC
+plot(pr.var.per, xlab="Principal Component", 
+     ylab="Proportion of Variance Explained",
+     ylim=c(0,1), type="o")
+# alternative scree plot
+barplot(pr.var.per, ylab = "Precent of Variance Explained",
+     names.arg=paste0("PC",1:length(pr.var.per)), 
+     las=2, axes = FALSE)
+axis(2, at=pr.var.per, labels=round(pr.var.per,2)*100 )
+```
+
+## Hierarchical clustering
+```{r}
+#hierarchical clustering
+wisc.hclust<-hclust(dist(wisc.pr$x[,(1:7)]))
+```
+
+```{r}
+# plot cluster dendrogram
+plot(wisc.hclust)
+abline(h=18, col="red", lty=2)
+```
+
+```{r}
+# cut the tree into four clusters based on the observation from cluster dendrogram
+k4<-cutree(wisc.hclust, k=4)
+table(k4, diagnosis)
+# plot hierarchical clustering
+plot(wisc.pr$x[,1:2], col=k4)
+```
+
+## combining method
+```{r}
+# using the minimum number of principal components required to describe at least 90% of the variability in the data, create a hierarchical clustering model with the linkage method="ward.D2"
+wisc.pr.hclust<-hclust(dist(wisc.pr$x[,1:7]), "ward.D2")
+grps<-cutree(wisc.pr.hclust,k=2)
+table(grps)
+table(grps, diagnosis)
+plot(wisc.pr$x[,1:2],col=grps)
+# switch the color
+g<-as.factor(grps)
+levels(g)
+g<-relevel(g,2)
+levels(g)
+# plot using re-ordered factor
+plot(wisc.pr$x[,1:2],col=g)
+```
+
+## prediction
+```{r}
+#url <- "new_samples.csv"
+url <- "https://tinyurl.com/new-samples-CSV"
+new <- read.csv(url)
+npc <- predict(wisc.pr, newdata=new)
+npc
+# plot
+plot(wisc.pr$x[,1:2], col=g)
+points(npc[,1], npc[,2], col="blue", pch=16, cex=3)
+text(npc[,1], npc[,2], c(1,2), col="white")
+```
+
+
