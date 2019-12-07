@@ -1,0 +1,32 @@
+---
+title: "Lab 11: Structural Bioinformatics 1"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Section1: The PDB dtaabase for biomolecular structure data
+```{r}
+data<-read.csv("PDB_Data_Export_Summary.csv")
+data
+#determine the percentage of structures solved by X-Ray and Electron Microscopy
+round(data$Total/sum(data$Total)*100,2)
+#determine what proportion of structures are protein?
+round(sum(data$Proteins)/sum(data$Total)*100,2)
+```
+
+## Section3: Introduction to Bio3D in R
+```{r}
+library(bio3d)
+pdb<-read.pdb("1hsg")
+pdb
+# select atoms
+ligand<-atom.select(pdb,"ligand", value=T)
+# write in file
+write.pdb(ligand, file="1hsg_ligand.pdb")
+#trim.pdb()
+
+```
+
