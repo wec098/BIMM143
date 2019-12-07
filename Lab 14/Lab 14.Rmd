@@ -1,0 +1,109 @@
+---
+title: "Lab 14"
+author: "Weixi Chen"
+date: "11/12/2019"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+counts <- read.csv("airway_scaledcounts.csv", stringsAsFactors = FALSE)
+metadata <- read.csv("airway_metadata.csv", stringsAsFactors = FALSE)
+head(counts)
+head(metadata)
+```
+
+```{r}
+ncol(counts)
+nrow(metadata)
+```
+
+```{r}
+control <- metadata[metadata[,"dex"]=="control",]
+control$id
+control.mean <- rowSums(counts[,control$id])/length(control$id)
+names(control.mean) <- counts$ensgene
+treated <- metadata[metadata[,"dex"]=="treated",]
+treated.mean <- rowSums(counts[,treated$id])/length(treated$id)
+names(treated.mean) <- counts$ensgene
+# we will combine our meancount data for bookkeeping purposes.
+meancounts <- data.frame(control.mean, treated.mean)
+```
+
+Plot control vs treated!
+```{r}
+plot(meancounts$control.mean, meancounts$treated.mean)
+#log plot
+plot(meancounts$control.mean, meancounts$treated.mean, log="xy")
+```
+
+```{r}
+meancounts$log2fc <- log2(meancounts[,"treated.mean"]/meancounts[,"control.mean"])
+head(meancounts)
+```
+
+```{r}
+# show where zeros are
+zero.vals <- which(meancounts[,1:2]==0, arr.ind=TRUE)
+to.rm <- unique(zero.vals[,1])
+# delete any zeros
+mycounts <- meancounts[-to.rm,]
+head(mycounts)
+```
+
+```{r}
+up.ind <- mycounts$log2fc > 2
+down.ind <- mycounts$log2fc < (-2)
+sum(up.ind)
+sum(down.ind)
+```
+
+```{r}
+head(mycounts[up.ind,])
+```
+
+DESeq analysis
+```{r}
+library(DESeq2)
+citation("DESeq2")
+```
+
+```{r}
+dds <- DESeqDataSetFromMatrix(countData=counts, 
+                              colData=metadata, 
+                              design=~dex, 
+                              tidy=TRUE)
+dds
+```
+
+```{r}
+dds <- DESeq(dds)
+res <- results(dds)
+res
+```
+
+## summary plot: volcano plot
+This figure 
+```{r}
+# add color
+mycols <- rep("gray",nrow(res))
+# make points with +2, -2 fold change blue
+mycols[abs(res$log2FoldChange)>2] <- "red"
+
+inds <- (res$padj < 0.01) & (abs(res$log2FoldChange) > 2 )
+mycols[ inds ] <- "blue"
+
+# volcano plot with custom colors
+plot(res$log2FoldChange, -log(res$padj),
+     col=mycols)
+abline(v=c(-2,2), col="gray", lty=2)
+abline(h=-log(0.1), col="gray", lty=2)
+```
+
+```{r}
+#write.csv(resSig01[ord,], "signif01_results.csv")
+```
+
