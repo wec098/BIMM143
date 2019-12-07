@@ -1,0 +1,30 @@
+---
+title: "Lab 7"
+author: "Weixi Chen"
+date: "10/22/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+student1 <- c(100, 100, 100, 100, 90)
+student2 <- c(100, 100, 100, NA, 90)
+```
+
+```{r}
+mean_grade <- function(x){
+  if (any(is.na(x))){
+    stop("score missing")
+  }
+  mean(x[-which.min(x)], na.rm=TRUE)
+}
+```
+
+test
+```{r}
+mean_grade(student1)
+mean_grade(student2)
+```
